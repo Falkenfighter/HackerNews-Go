@@ -48,7 +48,7 @@ func TopStories() ([]*Story, error) {
         case story := <-ch:
             stories = append(stories, story)
             if len(stories) == len(*ids) {
-                return stories
+                return stories, nil
             }
         }
     }
