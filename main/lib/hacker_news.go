@@ -1,7 +1,7 @@
 package lib
 
 import (
-    "github.com/bndr/gopencils"
+    "github.com/Falkenfighter/GoRest"
     "fmt"
     "runtime"
 )
@@ -24,7 +24,7 @@ func (s *Story) String() string {
     return fmt.Sprintf(s.Title)
 }
 
-var api = gopencils.Api("https://hacker-news.firebaseio.com/v0")
+var client = GoRest.MakeClient("https://hacker-news.firebaseio.com/v0")
 
 func TopStories() ([]*Story, error) {
     ids, err := topStoryIds()
@@ -37,10 +37,7 @@ func TopStories() ([]*Story, error) {
 
     ch := make(chan *Story)
     for i, id := range *ids {
-        go func(i, id int) {
-            story, _ := topStory(id)
-            ch <- story
-        }(i, id)
+        go getStory(i, id, ch, 0)
     }
 
     for {
@@ -57,12 +54,25 @@ func TopStories() ([]*Story, error) {
 
 func topStoryIds() (ids *Ids, err error) {
     ids = new(Ids)
-    _, err = api.Res("topstories.json", ids).Get()
+    _, err = client.Path("topstories.json").Get(ids)
     return
 }
 
 func topStory(id int) (story *Story, err error) {
     story = new(Story)
-    _, err = api.Res("item").Res(fmt.Sprintf("%d.json", id), story).Get()
+    _, err = client.Path("item", fmt.Sprintf("%d.json", id)).Get(story)
     return
+}
+
+func getStory(i, id int, ch chan *Story, acc int) {
+    story, err := topStory(id)
+    if err != nil {
+        if acc >= 2 {
+            ch <- new(Story)
+            return
+        }
+        getStory(i, id, ch, acc + 1)
+    } else {
+        ch <- story
+    }
 }
